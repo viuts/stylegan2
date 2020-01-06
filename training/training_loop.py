@@ -8,6 +8,8 @@
 
 import numpy as np
 import tensorflow as tf
+import wandb
+
 import dnnlib
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
@@ -15,6 +17,7 @@ from dnnlib.tflib.autosummary import autosummary
 from training import dataset
 from training import misc
 from metrics import metric_base
+from wandb_util import locate_latest_pkl
 
 #----------------------------------------------------------------------------
 # Just-in-time processing of training images before feeding them to the networks.
@@ -116,7 +119,7 @@ def training_loop(
     tf_config               = {},       # Options for tflib.init_tf().
     data_dir                = None,     # Directory to load datasets from.
     G_smoothing_kimg        = 10.0,     # Half-life of the running average of generator weights.
-    minibatch_repeats       = 4,        # Number of minibatches to run before adjusting training parameters.
+    minibatch_repeats       = 1,        # Number of minibatches to run before adjusting training parameters.
     lazy_regularization     = True,     # Perform regularization as a separate training step?
     G_reg_interval          = 4,        # How often the perform regularization for G? Ignored if lazy_regularization=False.
     D_reg_interval          = 16,       # How often the perform regularization for D? Ignored if lazy_regularization=False.
@@ -124,23 +127,29 @@ def training_loop(
     total_kimg              = 25000,    # Total length of the training, measured in thousands of real images.
     mirror_augment          = False,    # Enable mirror augment?
     drange_net              = [-1,1],   # Dynamic range used when feeding image data to the networks.
-    image_snapshot_ticks    = 50,       # How often to save image snapshots? None = only save 'reals.png' and 'fakes-init.png'.
-    network_snapshot_ticks  = 50,       # How often to save network snapshots? None = only save 'networks-final.pkl'.
+    image_snapshot_ticks    = 1,       # How often to save image snapshots? None = only save 'reals.png' and 'fakes-init.png'.
+    network_snapshot_ticks  = 1,       # How often to save network snapshots? None = only save 'networks-final.pkl'.
     save_tf_graph           = False,    # Include full TensorFlow computation graph in the tfevents file?
     save_weight_histograms  = False,    # Include weight histograms in the tfevents file?
-    resume_pkl              = None,     # Network pickle to resume training from, None = train from scratch.
+    resume_pkl              = 'latest',     # Network pickle to resume training from, None = train from scratch.
     resume_kimg             = 0.0,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0,      # Assumed wallclock time at the beginning. Affects reporting.
-    resume_with_new_nets    = False):   # Construct new networks according to G_args and D_args before resuming training?
+    resume_with_new_nets    = False,
+    wandb_entity = '',
+    wandb_project = ''):   # Construct new networks according to G_args and D_args before resuming training?
 
     # Initialize dnnlib and TensorFlow.
     tflib.init_tf(tf_config)
     num_gpus = dnnlib.submit_config.num_gpus
+    wandb_enable = wandb_entity != ''
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
     grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
     misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
+
+    if wandb_enable:
+        wandb.init(project=wandb_project)
 
     # Construct or load networks.
     with tf.device('/gpu:0'):
@@ -150,6 +159,15 @@ def training_loop(
             D = tflib.Network('D', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **D_args)
             Gs = G.clone('Gs')
         if resume_pkl is not None:
+            if wandb_enable and resume_pkl == 'latest':
+                wandb_path = '/'.join([wandb_entity, wandb_project])
+                run_path, file_name = locate_latest_pkl(wandb_path)
+                print(f'Downloading {file_name}')
+                weights_file = wandb.restore(file_name, run_path=run_path, replace=True)
+                print("Download finished")
+                resume_pkl = weights_file.name
+                ckpt_count, _ = file_name.split('.')
+                resume_kimg = int(ckpt_count)
             print('Loading networks from "%s"...' % resume_pkl)
             rG, rD, rGs = misc.load_pkl(resume_pkl)
             if resume_with_new_nets: G.copy_vars_from(rG); D.copy_vars_from(rD); Gs.copy_vars_from(rGs)
@@ -318,27 +336,50 @@ def training_loop(
             total_time = dnnlib.RunContext.get().get_time_since_start() + resume_time
 
             # Report progress.
-            print('tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f' % (
-                autosummary('Progress/tick', cur_tick),
-                autosummary('Progress/kimg', cur_nimg / 1000.0),
-                autosummary('Progress/lod', sched.lod),
-                autosummary('Progress/minibatch', sched.minibatch_size),
-                dnnlib.util.format_time(autosummary('Timing/total_sec', total_time)),
-                autosummary('Timing/sec_per_tick', tick_time),
-                autosummary('Timing/sec_per_kimg', tick_time / tick_kimg),
-                autosummary('Timing/maintenance_sec', maintenance_time),
-                autosummary('Resources/peak_gpu_mem_gb', peak_gpu_mem_op.eval() / 2**30)))
-            autosummary('Timing/total_hours', total_time / (60.0 * 60.0))
-            autosummary('Timing/total_days', total_time / (24.0 * 60.0 * 60.0))
+            if wandb_enable:
+                wandb.log(
+                    {
+                        'Progress/tick': cur_tick,
+                        'Progress/kimg': cur_nimg / 1000.0,
+                        'Progress/lod': sched.lod,
+                        'Timing/total_sec': dnnlib.util.format_time(total_time),
+                        'Timing/sec_per_tick': tick_time,
+                        'Timing/sec_per_kimg': tick_time / tick_kimg,
+                        'Timing/maintenance_sec': maintenance_time,
+                        'Resources/peak_gpu_mem_gb': (peak_gpu_mem_op.eval() / 2**30),
+                        'Timing/total_hours': total_time / (60.0 * 60.0),
+                        'Timing/total_days': total_time / (24.0 * 60.0 * 60.0),
+                    }
+                )
+            else :
+                print('tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f' % (
+                    autosummary('Progress/tick', cur_tick),
+                    autosummary('Progress/kimg', cur_nimg / 1000.0),
+                    autosummary('Progress/lod', sched.lod),
+                    autosummary('Progress/minibatch', sched.minibatch_size),
+                    dnnlib.util.format_time(autosummary('Timing/total_sec', total_time)),
+                    autosummary('Timing/sec_per_tick', tick_time),
+                    autosummary('Timing/sec_per_kimg', tick_time / tick_kimg),
+                    autosummary('Timing/maintenance_sec', maintenance_time),
+                    autosummary('Resources/peak_gpu_mem_gb', peak_gpu_mem_op.eval() / 2**30)))
+                autosummary('Timing/total_hours', total_time / (60.0 * 60.0))
+                autosummary('Timing/total_days', total_time / (24.0 * 60.0 * 60.0))
 
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
-                misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                label = 'fakes%06d.png' % (cur_nimg // 1000)
+                if wandb_enable:
+                    image = utils.make_grid(sample, nrow=8, normalize=True, range=(-1,1))
+                    wandb.log({"samples": [wandb.Image(image, caption=label)]})
+                else:
+                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path(label, drange=drange_net, grid_size=grid_size)
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
-                metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), data_dir=dnnlib.convert_path(data_dir), num_gpus=num_gpus, tf_config=tf_config)
+                # metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), data_dir=dnnlib.convert_path(data_dir), num_gpus=num_gpus, tf_config=tf_config)
+                if wandb_enable:
+                    wandb.save(pkl)
 
             # Update summaries and RunContext.
             metrics.update_autosummaries()
