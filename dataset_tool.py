@@ -18,6 +18,7 @@ import numpy as np
 import tensorflow as tf
 import PIL.Image
 import dnnlib.tflib as tflib
+from tqdm import tqdm
 
 from training import dataset
 

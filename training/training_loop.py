@@ -19,6 +19,7 @@ from training import misc
 from metrics import metric_base
 from wandb_util import locate_latest_pkl
 from torchvision import utils
+from tqdm import tqdm
 
 #----------------------------------------------------------------------------
 # Just-in-time processing of training images before feeding them to the networks.
@@ -132,7 +133,7 @@ def training_loop(
     network_snapshot_ticks  = 1,       # How often to save network snapshots? None = only save 'networks-final.pkl'.
     save_tf_graph           = False,    # Include full TensorFlow computation graph in the tfevents file?
     save_weight_histograms  = False,    # Include weight histograms in the tfevents file?
-    resume_pkl              = 'latest',     # Network pickle to resume training from, None = train from scratch.
+    resume_pkl              = None,     # Network pickle to resume training from, None = train from scratch.
     resume_kimg             = 0.0,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0,      # Assumed wallclock time at the beginning. Affects reporting.
     resume_with_new_nets    = False,
@@ -163,12 +164,13 @@ def training_loop(
             if wandb_enable and resume_pkl == 'latest':
                 wandb_path = '/'.join([wandb_entity, wandb_project])
                 run_path, file_name = locate_latest_pkl(wandb_path)
-                print(f'Downloading {file_name}')
-                weights_file = wandb.restore(file_name, run_path=run_path, replace=True)
-                print("Download finished")
-                resume_pkl = weights_file.name
-                ckpt_count, _ = file_name.split('.')
-                resume_kimg = int(ckpt_count)
+                if run_path is None:
+                    print(f'Downloading {file_name}')
+                    weights_file = wandb.restore(file_name, run_path=run_path, replace=True)
+                    print("Download finished")
+                    resume_pkl = weights_file.name
+                    ckpt_count, _ = file_name.split('.')
+                    resume_kimg = int(ckpt_count)
             print('Loading networks from "%s"...' % resume_pkl)
             rG, rD, rGs = misc.load_pkl(resume_pkl)
             if resume_with_new_nets: G.copy_vars_from(rG); D.copy_vars_from(rD); Gs.copy_vars_from(rGs)
@@ -282,6 +284,8 @@ def training_loop(
     tick_start_nimg = cur_nimg
     prev_lod = -1.0
     running_mb_counter = 0
+    pbar = tqdm(dynamic_ncols=True, smoothing=0.01, initial=cur_nimg, total=total_kimg * 1000)
+
     while cur_nimg < total_kimg * 1000:
         if dnnlib.RunContext.get().should_stop(): break
 
@@ -301,6 +305,7 @@ def training_loop(
             run_G_reg = (lazy_regularization and running_mb_counter % G_reg_interval == 0)
             run_D_reg = (lazy_regularization and running_mb_counter % D_reg_interval == 0)
             cur_nimg += sched.minibatch_size
+            pbar.update(sched.minibatch_size)
             running_mb_counter += 1
 
             # Fast path without gradient accumulation.
@@ -394,5 +399,6 @@ def training_loop(
     # All done.
     summary_log.close()
     training_set.close()
+    pbar.close()
 
 #----------------------------------------------------------------------------
