@@ -379,7 +379,7 @@ def training_loop(
                     image = utils.make_grid(grid_fakes, nrow=8, normalize=True, range=(-1,1))
                     wandb.log({"samples": [wandb.Image(image, caption=label)]})
                 else:
-                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path(label, drange=drange_net, grid_size=grid_size))
+                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
