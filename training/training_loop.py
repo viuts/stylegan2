@@ -18,6 +18,7 @@ from training import dataset
 from training import misc
 from metrics import metric_base
 from wandb_util import locate_latest_pkl
+from torchvision import utils
 
 #----------------------------------------------------------------------------
 # Just-in-time processing of training images before feeding them to the networks.
@@ -351,7 +352,7 @@ def training_loop(
                         'Timing/total_days': total_time / (24.0 * 60.0 * 60.0),
                     }
                 )
-            else :
+            else:
                 print('tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f' % (
                     autosummary('Progress/tick', cur_tick),
                     autosummary('Progress/kimg', cur_nimg / 1000.0),
@@ -370,12 +371,12 @@ def training_loop(
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
                 label = 'fakes%06d.png' % (cur_nimg // 1000)
                 if wandb_enable:
-                    image = utils.make_grid(sample, nrow=8, normalize=True, range=(-1,1))
+                    image = utils.make_grid(grid_fakes, nrow=8, normalize=True, range=(-1,1))
                     wandb.log({"samples": [wandb.Image(image, caption=label)]})
                 else:
-                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path(label, drange=drange_net, grid_size=grid_size)
+                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path(label, drange=drange_net, grid_size=grid_size))
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
-                pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' % (cur_nimg // 1000))
+                pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
                 # metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), data_dir=dnnlib.convert_path(data_dir), num_gpus=num_gpus, tf_config=tf_config)
                 if wandb_enable:

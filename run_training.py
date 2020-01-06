@@ -170,7 +170,7 @@ def main():
     parser.add_argument('--gamma', help='R1 regularization weight (default is config dependent)', default=None, type=float)
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)', default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument('--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)', default='fid50k', type=_parse_comma_sep)
-    parser.add_argument('--wandb_entity', type=str)
+    parser.add_argument('--wandb_entity', type=str, default='')
     parser.add_argument('--wandb_project', type=str, default="stylegan2")
 
     args = parser.parse_args()
