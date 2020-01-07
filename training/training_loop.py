@@ -376,7 +376,9 @@ def training_loop(
 
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
+                print('attempting to generate fake image')
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
+                print('done generating fake images')
                 img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
                 misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
                 if wandb_enable:
