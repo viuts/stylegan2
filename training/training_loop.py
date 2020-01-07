@@ -149,7 +149,8 @@ def training_loop(
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
     grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
-    misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
+    print(grid_size)
+    # misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
 
     if wandb_enable:
         print(f'wandb_project: {wandb_project}')
@@ -183,6 +184,7 @@ def training_loop(
     G.print_layers(); D.print_layers()
     sched = training_schedule(cur_nimg=total_kimg*1000, training_set=training_set, **sched_args)
     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
+    print(grid_latents.shape)
     grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
     misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes_init.png'), drange=drange_net, grid_size=grid_size)
 
@@ -380,9 +382,10 @@ def training_loop(
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
                 print('done generating fake images')
                 img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
+                print(img_path)
                 print('saving image grid')
-                # misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
-                utils.save_image(grid_fakes, img_path, nrow=8, normalize=True, range=(-1,1))
+                misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
+                # utils.save_image(grid_fakes, img_path, nrow=8, normalize=True, range=(-1,1))
                 print('done saving image grid')
                 if wandb_enable:
                     print('uploading to wandb')
