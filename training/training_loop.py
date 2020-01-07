@@ -380,8 +380,10 @@ def training_loop(
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
                 print('done generating fake images')
                 img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
-                misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
                 print('saving image grid')
+                # misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
+                utils.save_image(grid_fakes, img_path, nrow=8, normalize=True, range=(-1,1))
+                print('done saving image grid')
                 if wandb_enable:
                     print('uploading to wandb')
                     wandb.log({"Fakes": [wandb.Image(PIL.Image.open(img_path), caption="Fakes")]})
