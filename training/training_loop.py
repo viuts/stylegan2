@@ -348,8 +348,6 @@ def training_loop(
             if wandb_enable:
                 wandb.log(
                     {
-                        'Loss/discriminator': D_loss,
-                        'Loss/generator': D_loss,
                         'Progress/tick': cur_tick,
                         'Progress/kimg': cur_nimg / 1000.0,
                         'Progress/lod': sched.lod,
