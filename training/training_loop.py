@@ -381,8 +381,11 @@ def training_loop(
                 print('done generating fake images')
                 img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
                 misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
+                print('saving image grid')
                 if wandb_enable:
+                    print('uploading to wandb')
                     wandb.log({"Fakes": [wandb.Image(PIL.Image.open(img_path), caption="Fakes")]})
+                    print('done upload to wandb')
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
