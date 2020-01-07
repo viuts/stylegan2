@@ -9,6 +9,7 @@
 import numpy as np
 import tensorflow as tf
 import wandb
+import PIL.Image
 
 import dnnlib
 import dnnlib.tflib as tflib
@@ -148,11 +149,12 @@ def training_loop(
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
     grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
-    # misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
+    misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
 
     if wandb_enable:
         print(f'wandb_project: {wandb_project}')
         wandb.init(project=wandb_project)
+        wandb.log({"reals": [wandb.Image(PIL.Image.open(dnnlib.make_run_dir_path('reals.png')), caption="Reals")]})
 
     # Construct or load networks.
     with tf.device('/gpu:0'):
