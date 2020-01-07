@@ -53,7 +53,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
     train.wandb_entity = wandb_entity
     train.wandb_project = wandb_project
     sched.G_lrate_base = sched.D_lrate_base = 0.002
-    sched.minibatch_size_base = 32
+    sched.minibatch_size_base = 4
     sched.minibatch_gpu_base = 4
     D_loss.gamma = 10
     metrics = [metric_defaults[x] for x in metrics]
