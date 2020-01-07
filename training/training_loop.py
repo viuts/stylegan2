@@ -10,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 import wandb
 import PIL.Image
+import time
 
 import dnnlib
 import dnnlib.tflib as tflib
@@ -65,7 +66,7 @@ def training_schedule(
     D_lrate_base            = 0.002,    # Learning rate for the discriminator.
     D_lrate_dict            = {},       # Resolution-specific overrides.
     lrate_rampup_kimg       = 0,        # Duration of learning rate ramp-up.
-    tick_kimg_base          = 4,        # Default interval of progress snapshots.
+    tick_kimg_base          = 2,        # Default interval of progress snapshots.
     tick_kimg_dict          = {8:28, 16:24, 32:20, 64:16, 128:12, 256:8, 512:2, 1024:2}): # Resolution-specific overrides.
 
     # Initialize result dict.
@@ -148,11 +149,11 @@ def training_loop(
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
-    grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
+    grid_size, _, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
     # misc.save_image_grid(grid_reals, dnnlib.make_run_dir_path('reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
 
     if wandb_enable:
-        wandb.init(project=wandb_project, sync_tensorboard=True)
+        wandb.init(project=wandb_project, tensorboard=True, sync_tensorboard=True)
         # wandb.log({"reals": [wandb.Image(PIL.Image.open(dnnlib.make_run_dir_path('reals.png')), caption="Reals")]})
 
     # Construct or load networks.
@@ -399,6 +400,8 @@ def training_loop(
             # tflib.autosummary.save_summaries(summary_log, cur_nimg)
             dnnlib.RunContext.get().update('%.2f' % sched.lod, cur_epoch=cur_nimg // 1000, max_epoch=total_kimg)
             maintenance_time = dnnlib.RunContext.get().get_last_update_interval() - tick_time
+            print('sleeping 60 seconds to cool down GPU')
+            time.sleep(60)
 
     # Save final snapshot.
     misc.save_pkl((G, D, Gs), dnnlib.make_run_dir_path('network-final.pkl'))
