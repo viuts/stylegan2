@@ -154,7 +154,7 @@ def training_loop(
     if wandb_enable:
         print(f'wandb_project: {wandb_project}')
         wandb.init(project=wandb_project)
-        wandb.log({"reals": [wandb.Image(dnnlib.make_run_dir_path('reals.png'), caption="Reals")]})
+        wandb.log({"reals": [wandb.Image(PIL.Image.open(dnnlib.make_run_dir_path('reals.png')), caption="Reals")]})
 
     # Construct or load networks.
     with tf.device('/gpu:0'):
@@ -380,7 +380,7 @@ def training_loop(
                 img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
                 misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
                 if wandb_enable:
-                    wandb.log({"samples": [wandb.Image(img_path, caption=label)]})
+                    wandb.log({"samples": [wandb.Image(PIL.Image.open(img_path), caption=label)]})
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
