@@ -91,7 +91,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
         sched.minibatch_size_base = 32 # (default)
         sched.minibatch_size_dict = {8: 256, 16: 128, 32: 64, 64: 32, 128: 16, 256: 8, 512: 4, 1024: 4}
         sched.minibatch_gpu_base = 4 # (default)
-        sched.minibatch_gpu_dict = {8: 32, 16: 16, 32: 8, 64: 4}
+        sched.minibatch_gpu_dict = {8: 32, 16: 16, 32: 8, 64: 4, 128: 2, 256: 2, 512: 2, 1024: 1}
         G.synthesis_func = 'G_synthesis_stylegan_revised'
         D.func_name = 'training.networks_stylegan2.D_stylegan'
 
