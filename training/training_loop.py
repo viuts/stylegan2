@@ -375,7 +375,9 @@ def training_loop(
                 autosummary('Timing/total_days', total_time / (24.0 * 60.0 * 60.0))
 
             # Save snapshots.
-            if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
+            # if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
+            print('curtick: ', cur_tick)
+            if 1:
                 print('attempting to generate fake image')
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
                 print('done generating fake images')
@@ -388,7 +390,8 @@ def training_loop(
                     print('uploading to wandb')
                     wandb.log({"Fakes": [wandb.Image(PIL.Image.open(img_path), caption="Fakes")]})
                     print('done upload to wandb')
-            if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
+            # if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
+            if 1:
                 pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
                 # metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), data_dir=dnnlib.convert_path(data_dir), num_gpus=num_gpus, tf_config=tf_config)
@@ -400,8 +403,6 @@ def training_loop(
             # tflib.autosummary.save_summaries(summary_log, cur_nimg)
             dnnlib.RunContext.get().update('%.2f' % sched.lod, cur_epoch=cur_nimg // 1000, max_epoch=total_kimg)
             maintenance_time = dnnlib.RunContext.get().get_last_update_interval() - tick_time
-            print('sleeping 60 seconds to cool down GPU')
-            time.sleep(60)
 
     # Save final snapshot.
     misc.save_pkl((G, D, Gs), dnnlib.make_run_dir_path('network-final.pkl'))
