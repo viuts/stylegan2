@@ -154,7 +154,7 @@ def training_loop(
     if wandb_enable:
         print(f'wandb_project: {wandb_project}')
         wandb.init(project=wandb_project)
-        wandb.log({"reals": [wandb.Image(PIL.Image.open(dnnlib.make_run_dir_path('reals.png')), caption="Reals")]})
+        wandb.log({"reals": [wandb.Image(dnnlib.make_run_dir_path('reals.png'), caption="Reals")]})
 
     # Construct or load networks.
     with tf.device('/gpu:0'):
@@ -377,12 +377,10 @@ def training_loop(
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
                 grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
-                label = 'fakes%06d.png' % (cur_nimg // 1000)
+                img_path = dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000))
+                misc.save_image_grid(grid_fakes, img_path, drange=drange_net, grid_size=grid_size)
                 if wandb_enable:
-                    image = utils.make_grid(grid_fakes, nrow=8, normalize=True, range=(-1,1))
-                    wandb.log({"samples": [wandb.Image(image, caption=label)]})
-                else:
-                    misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                    wandb.log({"samples": [wandb.Image(img_path, caption=label)]})
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((G, D, Gs), pkl)
@@ -391,8 +389,8 @@ def training_loop(
                     wandb.save(pkl)
 
             # Update summaries and RunContext.
-            metrics.update_autosummaries()
-            tflib.autosummary.save_summaries(summary_log, cur_nimg)
+            # metrics.update_autosummaries()
+            # tflib.autosummary.save_summaries(summary_log, cur_nimg)
             dnnlib.RunContext.get().update('%.2f' % sched.lod, cur_epoch=cur_nimg // 1000, max_epoch=total_kimg)
             maintenance_time = dnnlib.RunContext.get().get_last_update_interval() - tick_time
 
