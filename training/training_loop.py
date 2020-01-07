@@ -154,7 +154,7 @@ def training_loop(
 
     if wandb_enable:
         print(f'wandb_project: {wandb_project}')
-        wandb.init(project=wandb_project)
+        wandb.init(project=wandb_project, sync_tensorboard=True)
         # wandb.log({"reals": [wandb.Image(PIL.Image.open(dnnlib.make_run_dir_path('reals.png')), caption="Reals")]})
 
     # Construct or load networks.
