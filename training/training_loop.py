@@ -167,7 +167,7 @@ def training_loop(
             if wandb_enable and resume_pkl == 'latest':
                 wandb_path = '/'.join([wandb_entity, wandb_project])
                 run_path, file_name = locate_latest_pkl(wandb_path)
-                if run_path is None:
+                if run_path is not None:
                     print(f'Downloading {file_name}')
                     weights_file = wandb.restore(file_name, run_path=run_path, replace=True)
                     print("Download finished")
