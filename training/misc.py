@@ -7,7 +7,7 @@
 """Miscellaneous utility functions."""
 
 import os
-import pickle
+import dill as pickle
 import numpy as np
 import PIL.Image
 import PIL.ImageFont

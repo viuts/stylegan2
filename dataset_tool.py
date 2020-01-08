@@ -329,7 +329,7 @@ def create_mnistrgb(tfrecord_dir, mnist_dir, num_images=1000000, random_seed=123
 
 def create_cifar10(tfrecord_dir, cifar10_dir):
     print('Loading CIFAR-10 from "%s"' % cifar10_dir)
-    import pickle
+    import dill as pickle
     images = []
     labels = []
     for batch in range(1, 6):
@@ -356,7 +356,7 @@ def create_cifar10(tfrecord_dir, cifar10_dir):
 
 def create_cifar100(tfrecord_dir, cifar100_dir):
     print('Loading CIFAR-100 from "%s"' % cifar100_dir)
-    import pickle
+    import dill as pickle
     with open(os.path.join(cifar100_dir, 'train'), 'rb') as file:
         data = pickle.load(file, encoding='latin1')
     images = data['data'].reshape(-1, 3, 32, 32)
@@ -378,7 +378,7 @@ def create_cifar100(tfrecord_dir, cifar100_dir):
 
 def create_svhn(tfrecord_dir, svhn_dir):
     print('Loading SVHN from "%s"' % svhn_dir)
-    import pickle
+    import dill as pickle
     images = []
     labels = []
     for batch in range(1, 4):

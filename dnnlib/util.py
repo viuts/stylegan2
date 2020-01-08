@@ -16,7 +16,7 @@ import shutil
 import sys
 import types
 import io
-import pickle
+import dill as pickle
 import re
 import requests
 import html

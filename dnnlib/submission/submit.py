@@ -10,7 +10,7 @@ import copy
 import inspect
 import os
 import pathlib
-import pickle
+import dill as pickle
 import platform
 import pprint
 import re
