@@ -89,6 +89,7 @@ def _sanitize_tf_config(config_dict: dict = None) -> dict:
     cfg["env.TF_CPP_MIN_LOG_LEVEL"]         = "1"       # 0 = Print all available debug info from TensorFlow. 1 = Print warnings and errors, but disable debug info.
     cfg["graph_options.place_pruned_graph"] = True      # False = Check that all ops are available on the designated device. True = Skip the check for ops that are not used.
     cfg["gpu_options.allow_growth"]         = True      # False = Allocate all GPU memory at the beginning. True = Allocate only as much GPU memory as needed.
+    cfg['gpu_options.per_process_gpu_memory_fraction'] = "0.7" # only allow tensorflow take up to 70% of gpu memory
 
     # Remove defaults for environment variables that are already set.
     for key in list(cfg):
@@ -151,7 +152,6 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
                 obj = getattr(obj, field)
             setattr(obj, fields[-1], value)
 
-    # Create session.
     session = tf.Session(config=config_proto)
     if force_as_default:
         # pylint: disable=protected-access
